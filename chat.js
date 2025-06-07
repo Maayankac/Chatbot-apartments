@@ -6,7 +6,7 @@ async function sendMessage() {
     chatLog.innerHTML += `<div class='user'>${input}</div>`;
 
     try {
-        const response = await fetch('http://localhost:3000/chat', {
+        const response = await fetch('https://chatbot-apartments.onrender.com/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: input })

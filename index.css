@@ -1,0 +1,97 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f1f2f6;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    direction: rtl; /* יישור לימין לעברית */
+}
+
+#chatContainer {
+    width: 50vw; /* חצי מסך רוחב */
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+#chatLog {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 10px;
+    min-height: 200px; /* גובה התחלתי */
+    height: auto;      /* גדילה אוטומטית */
+    overflow-y: auto;
+    background-color: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.user {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    padding: 8px 12px;
+    margin: 5px;
+    border-radius: 20px 20px 0 20px;
+    text-align: right;
+    max-width: 80%;
+    align-self: flex-end;
+}
+
+.bot {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 8px 12px;
+    margin: 5px;
+    border-radius: 20px 20px 20px 0;
+    text-align: right; /* יישור לימין */
+    max-width: 80%;
+    align-self: flex-start;
+}
+
+.property-card {
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+}
+
+#inputArea {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+    height: 120px;
+}
+
+#userInput {
+    width: 90%;
+    height: 100px; /* גובה שדה הטקסט */
+    padding: 12px;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    align-self: center;
+    resize: vertical; /* מאפשר שינוי גובה ע"י המשתמש */
+    text-align: right; /* יישור טקסט לימין */
+    vertical-align: top; /* חשוב להתחלת הטקסט מלמעלה */
+    overflow-y: auto;
+  }
+  
+#sendButton {
+    padding: 12px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    margin-top: 10px;
+    align-self: center;
+}

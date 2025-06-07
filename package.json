@@ -1,0 +1,17 @@
+{
+    "name": "chatbot-apartments",
+    "version": "1.0.0",
+    "description": "Chatbot server for apartment search",
+    "main": "chatbot.js",
+    "type": "module",
+    "scripts": {
+      "start": "node chatbot.js"
+    },
+    "dependencies": {
+      "cors": "^2.8.5",
+      "dotenv": "^16.3.1",
+      "express": "^4.18.2",
+      "node-fetch": "^2.6.7"
+    }
+  }
+  

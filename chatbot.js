@@ -1,7 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import cors from 'cors';
-import dotenv from 'dotenv'; // טעינת משתני סביבה
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -10,16 +10,19 @@ const supabaseKey = process.env.SUPABASE_KEY;
 const openaiKey = process.env.OPENAI_KEY;
 
 const app = express();
-const port = process.env.PORT || 3000; // תמיכה ב-Render
+const port = process.env.PORT || 3000;
 
+// ✨ מאפשר גישה לקבצים סטטיים (כמו index.html, index.css וכו')
+app.use(express.static(__dirname));
 app.use(cors());
 app.use(express.json());
 
-// מסלול לבדיקה מהירה שהשרת רץ
+// ✅ ניתוב לדף הראשי
 app.get('/', (req, res) => {
-  res.send('Server is running ✅');
+  res.sendFile(__dirname + '/index.html');
 });
 
+// 🧠 פונקציית ניתוח טקסט המשתמש
 function detectParams(message) {
   const params = {};
   const lower = message.toLowerCase();
@@ -73,6 +76,7 @@ function detectParams(message) {
   return params;
 }
 
+// 📩 נקודת קלט לצ'אט
 app.post('/chat', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ error: 'Missing message' });
@@ -136,6 +140,7 @@ app.post('/chat', async (req, res) => {
   }
 });
 
+// ▶️ הרצת השרת
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

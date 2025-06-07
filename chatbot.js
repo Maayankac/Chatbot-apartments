@@ -3,6 +3,13 @@ import fetch from 'node-fetch';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// הגדרת __dirname ב-ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -12,17 +19,17 @@ const openaiKey = process.env.OPENAI_KEY;
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ✨ מאפשר גישה לקבצים סטטיים (כמו index.html, index.css וכו')
-app.use(express.static(__dirname));
 app.use(cors());
 app.use(express.json());
 
+// ✨ הגשת קבצים סטטיים (כמו index.html, index.css וכו')
+app.use(express.static(__dirname));
+
 // ✅ ניתוב לדף הראשי
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 🧠 פונקציית ניתוח טקסט המשתמש
 function detectParams(message) {
   const params = {};
   const lower = message.toLowerCase();
@@ -76,7 +83,6 @@ function detectParams(message) {
   return params;
 }
 
-// 📩 נקודת קלט לצ'אט
 app.post('/chat', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ error: 'Missing message' });
@@ -140,7 +146,6 @@ app.post('/chat', async (req, res) => {
   }
 });
 
-// ▶️ הרצת השרת
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`✅ Server running on port ${port}`);
 });

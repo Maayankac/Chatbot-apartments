@@ -29,7 +29,7 @@ async function sendMessage() {
             `;
           } else {
             // תגובה רגילה
-            chatLog.innerHTML += `<div class='bot'>${a.text}</div>`;
+chatLog.innerHTML += `<div class='bot'>${a.text}</div>`;
           }
         } else if (a.zone && a.address) {
           // תצוגת דירה לפי פרטי אובייקט

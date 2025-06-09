@@ -2,7 +2,6 @@ import express from 'express';
 import fetch from 'node-fetch';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -21,11 +20,9 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// ✨ הגשת קבצים סטטיים (כמו index.html, index.css וכו')
 app.use(express.static(__dirname));
 
-// ✅ ניתוב לדף הראשי
+// דף הבית
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -88,6 +85,19 @@ app.post('/chat', async (req, res) => {
   if (!message) return res.status(400).json({ error: 'Missing message' });
 
   try {
+    // שלב א: בדיקה אם המשתמש מתעניין בדירה
+    const interestMatch = message.match(/אני מעוניין בדירה\s*(\d+)/);
+    if (interestMatch) {
+      return res.json({
+        results: [
+          {
+            text: `מעולה! אני קובע לך פגישה עם בעל הדירה מספר ${interestMatch[1]} 😊 נדאג לעדכן אותך בפרטים בקרוב.`,
+          },
+        ],
+      });
+    }
+
+    // שלב ב: זיהוי פרמטרים מהודעה
     const params = detectParams(message);
 
     if (params.casual) {
@@ -98,6 +108,7 @@ app.post('/chat', async (req, res) => {
       return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות. שאל אותי על דירות! 🏠" }] });
     }
 
+    // שלב ג: חיפוש דירות עם פרמטרים
     if (params.city || params.zone || params.maxPrice || params.rooms || params.floor) {
       let url = `${supabaseUrl}/rest/v1/apartments1?select=*`;
       const filters = [];
@@ -118,28 +129,36 @@ app.post('/chat', async (req, res) => {
       });
 
       const data = await supabaseRes.json();
-      return res.json({ results: data });
-    } else {
-      const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${openaiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "You are a friendly chatbot. Respond naturally to the user." },
-            { role: "user", content: message },
-          ],
-          temperature: 0.7,
-        }),
-      });
 
-      const openaiJson = await openaiRes.json();
-      const reply = openaiJson.choices[0].message.content;
-      return res.json({ results: [{ text: reply }] });
+      // פורמט התגובה כך שכל דירה תסומן במספר
+      const formattedResults = data.map((apt, index) => ({
+        text: `🏠 דירה ${index + 1}: ב${apt.city}, אזור ${apt.zone}, ${apt.rooms} חדרים, קומה ${apt.floor}, במחיר ${apt.price} ש"ח.\nאם אתה מעוניין, כתוב: "אני מעוניין בדירה ${index + 1}"`
+      }));
+
+      return res.json({ results: formattedResults });
     }
+
+    // שלב ד: תשובה מ־OpenAI
+    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are a friendly chatbot. Respond naturally to the user." },
+          { role: "user", content: message },
+        ],
+        temperature: 0.7,
+      }),
+    });
+
+    const openaiJson = await openaiRes.json();
+    const reply = openaiJson.choices[0].message.content;
+    return res.json({ results: [{ text: reply }] });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error processing request', details: err.message });

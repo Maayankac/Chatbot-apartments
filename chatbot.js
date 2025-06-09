@@ -135,16 +135,15 @@ const formattedResults = data.map((apt, index) => {
 
   return {
     text: 
-      `🏠 דירה ${index + 1}:\n` +
-      `📍 עיר: ${apt.city}, אזור: ${apt.zone}\n` +
-      `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a>\n` +
-      `🛏 חדרים: ${apt.rooms}\n` +
-      `🏢 קומה: ${apt.floor}\n` +
-      `💲 מחיר: ${apt.price} ש"ח\n\n` +
+      `🏠 דירה ${index + 1}:<br>` +
+      `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
+      `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
+      `🛏 חדרים: ${apt.rooms}<br>` +
+      `🏢 קומה: ${apt.floor}<br>` +
+      `💲 מחיר: ${apt.price} ש"ח<br><br>` +
       `אם אתה מעוניין, כתוב: "אני מעוניין בדירה ${index + 1}"`
   };
 });
-
 
 
 

@@ -130,10 +130,22 @@ app.post('/chat', async (req, res) => {
 
       const data = await supabaseRes.json();
 
-      // פורמט התגובה כך שכל דירה תסומן במספר
- const formattedResults = data.map((apt, index) => ({
-  text: `🏠 דירה ${index + 1}: ב${apt.city}, אזור ${apt.zone}, 🛏 ${apt.rooms} חדרים, 🏢 קומה ${apt.floor}, 💲 מחיר: ${apt.price} ש"ח\nאם אתה מעוניין, כתוב: "אני מעוניין בדירה ${index + 1}"`
-}));
+const formattedResults = data.map((apt, index) => {
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
+
+  return {
+    text: 
+      `🏠 דירה ${index + 1}:\n` +
+      `📍 עיר: ${apt.city}, אזור: ${apt.zone}\n` +
+      `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a>\n` +
+      `🛏 חדרים: ${apt.rooms}\n` +
+      `🏢 קומה: ${apt.floor}\n` +
+      `💲 מחיר: ${apt.price} ש"ח\n\n` +
+      `אם אתה מעוניין, כתוב: "אני מעוניין בדירה ${index + 1}"`
+  };
+});
+
+
 
 
       return res.json({ results: formattedResults });

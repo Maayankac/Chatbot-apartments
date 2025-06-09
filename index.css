@@ -54,6 +54,22 @@ h1 {
     max-width: 80%;
     align-self: flex-start;
 }
+.bot button {
+    margin-top: 8px;
+    padding: 8px 16px;
+    background-color: #28a745; /* ירוק */
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+}
+
+.bot button:hover {
+    background-color: #218838;
+}
+
 
 .property-card {
     background-color: #ffffff;

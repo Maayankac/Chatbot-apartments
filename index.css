@@ -32,6 +32,17 @@ h1 {
     flex-direction: column;
     gap: 5px;
 }
+.property-card {
+    background-color: #f0fff4;
+    border: 1px solid #c3e6cb;
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 8px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+    color: #155724;
+}
 
 .user {
     background-color: #d1ecf1;

@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// הגדרת __dirname ב-ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -22,7 +21,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// דף הבית
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -84,8 +82,17 @@ app.post('/chat', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ error: 'Missing message' });
 
+  // ✅ בדיקה אם ההודעה באנגלית בלבד
+  const onlyEnglish = /^[\x00-\x7F\s.,!?'"()\-\[\]]+$/.test(message);
+  if (onlyEnglish) {
+    return res.json({
+      results: [
+        { text: "הצ'אט כרגע מבין רק עברית. אנא נסח את הבקשה בעברית 😊" }
+      ]
+    });
+  }
+
   try {
-    // שלב א: בדיקה אם המשתמש מתעניין בדירה
     const interestMatch = message.match(/אני מעוניין בדירה\s*(\d+)/);
     if (interestMatch) {
       return res.json({
@@ -97,7 +104,6 @@ app.post('/chat', async (req, res) => {
       });
     }
 
-    // שלב ב: זיהוי פרמטרים מהודעה
     const params = detectParams(message);
 
     if (params.casual) {
@@ -108,7 +114,6 @@ app.post('/chat', async (req, res) => {
       return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות. שאל אותי על דירות! 🏠" }] });
     }
 
-    // שלב ג: חיפוש דירות עם פרמטרים
     if (params.city || params.zone || params.maxPrice || params.rooms || params.floor) {
       let url = `${supabaseUrl}/rest/v1/apartments1?select=*`;
       const filters = [];
@@ -130,27 +135,24 @@ app.post('/chat', async (req, res) => {
 
       const data = await supabaseRes.json();
 
-const formattedResults = data.map((apt, index) => {
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
+      const formattedResults = data.map((apt, index) => {
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
 
-  return {
-    text: 
-      `🏠 דירה ${index + 1}:<br>` +
-      `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
-      `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
-      `🛏 חדרים: ${apt.rooms}<br>` +
-      `🏢 קומה: ${apt.floor}<br>` +
-      `💲 מחיר: ${apt.price} ש"ח<br><br>` +
-      `אם אתה מעוניין, כתוב: "אני מעוניין בדירה ${index + 1}"`
-  };
-});
-
-
+        return {
+          text:
+            `🏠 דירה ${index + 1}:<br>` +
+            `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
+            `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
+            `🛏 חדרים: ${apt.rooms}<br>` +
+            `🏢 קומה: ${apt.floor}<br>` +
+            `💲 מחיר: ${apt.price} ש"ח<br><br>` +
+            `אם אתה מעוניין, כתוב: "אני מעוניין בדירה ${index + 1}"`
+        };
+      });
 
       return res.json({ results: formattedResults });
     }
 
-    // שלב ד: תשובה מ־OpenAI
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {

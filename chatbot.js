@@ -1,3 +1,4 @@
+
 import express from 'express';
 import fetch from 'node-fetch';
 import cors from 'cors';
@@ -52,6 +53,12 @@ function detectParams(message) {
     }
   }
 
+  const priceAboveMatch = lower.match(/מעל\s*(\d{3,7})/);
+  if (priceAboveMatch) params.minPrice = priceAboveMatch[1];
+  const priceAboveMatch = lower.match(/(?:מעל|יותר מ)\s*(\d{3,7})/);
+  if (priceAboveMatch) params.minPrice = priceAboveMatch[1];
+  const priceBelowMatch = lower.match(/(?:עד|מתחת ל)\s*(\d{3,7})/);
+  if (priceBelowMatch) params.maxPrice = priceBelowMatch[1];
   const priceMatch = lower.match(/(\d{3,7})/);
   if (priceMatch) params.maxPrice = priceMatch[1];
 
@@ -86,8 +93,9 @@ app.post('/chat', async (req, res) => {
   const userId = req.ip;
   if (!message) return res.status(400).json({ error: 'Missing message' });
 
-  const onlyEnglish = /^[\x00-\x7F\s.,!?'"()\-\[\]]+$/.test(message);
-  if (onlyEnglish) {
+  const containsHebrew = /[\u0590-\u05FF]/.test(message);
+const containsEnglishLetters = /[a-zA-Z]/.test(message);
+  if (!containsHebrew && containsEnglishLetters) {
     return res.json({
       results: [
         { text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }
@@ -97,53 +105,24 @@ app.post('/chat', async (req, res) => {
 
   const state = userState[userId] || {};
 
-  // ✅ טיפול בתשובה ל"האם אהבת את הדירות?"
-  if (state.awaitingInterest) {
-    if (message.trim() === "כן") {
-      userState[userId] = { awaitingAptNumber: true };
-      return res.json({ results: [{ text: "איזה מספר דירה מעניינת אותך? (כתוב רק את המספר)" }] });
-    } else if (message.trim() === "לא") {
-      const search = lastSearches[userId];
-      if (!search) {
-        return res.json({ results: [{ text: "לא מצאתי חיפוש קודם כדי להציע דירות נוספות. תוכל לכתוב לי מה אתה מחפש 😊" }] });
-      }
+  
+  if (state.awaitingBudget) {
+    state.budget = message.trim();
+    state.awaitingBudget = false;
+    state.awaitingRooms = true;
+    return res.json({ results: [{ text: "כמה חדרים אתה מחפש?" }] });
+  } else if (state.awaitingRooms) {
+    state.rooms = message.trim();
+    const { budget, rooms } = state;
+    return res.json({
+      results: [{ text: `מעולה! רשמנו שחיפשת דירה עם תקציב של ${budget} ש"ח ולפחות ${rooms} חדרים. נתחיל את תהליך הרישום לדירה ✨` }]
+    });
+  } else if (state.awaitingAptNumber) {
 
-      search.offset += 10;
-      const urlWithOffset = `${search.url}&offset=${search.offset}`;
-
-      const supabaseRes = await fetch(urlWithOffset, {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      });
-
-      const data = await supabaseRes.json();
-      const formattedResults = data.map((apt, index) => {
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
-        return {
-          text:
-            `🏠 דירה ${search.offset + index + 1}:<br>` +
-            `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
-            `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
-            `🛏 חדרים: ${apt.rooms}<br>` +
-            `🏢 קומה: ${apt.floor}<br>` +
-            `💲 מחיר: ${apt.price} ש"ח`
-        };
-      });
-
-      formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
-      userState[userId] = { awaitingInterest: true };
-
-      return res.json({ results: formattedResults });
-    }
-  }
-
-  if (state.awaitingAptNumber) {
     state.aptNumber = message.trim();
     state.awaitingAptNumber = false;
     state.awaitingPhone = true;
-    return res.json({ results: [{ text: "בשביל לקבוע לך פגישה עם בעל הדירה אשמח לקבל את מספר הטלפון שלך?" }] });
+    return res.json({ results: [{ text: "מה מספר הטלפון שלך?" }] });
   } else if (state.awaitingPhone) {
     state.phone = message.trim();
     state.awaitingPhone = false;
@@ -160,8 +139,8 @@ app.post('/chat', async (req, res) => {
     userState[userId] = { awaitingFeedback: true };
     return res.json({
       results: [
-        { text: `הפרטים הועברו לבעל הדירה ${aptNumber}.  הוא יצור איתך קשר בהקדם ותוכלו לדבר על הדירה!😊` },
-        { text: "כדי לשפר את חווית המשתמש נשמח לדעת האם הצ'אט עזר לך? (כן / לא)" }
+        { text: `הפרטים שלך עבור דירה ${aptNumber} התקבלו בהצלחה! בעל הדירה יקבל את הפרטים שלך (שם: ${firstName} ${lastName}, טלפון: ${phone}) וייצור איתך קשר בהקדם האפשרי. שיהיה המון בהצלחה! 😊` },
+        { text: "האם הצ'אט עזר לך? (כן / לא)" }
       ]
     });
   } else if (state.awaitingFeedback) {
@@ -173,15 +152,14 @@ app.post('/chat', async (req, res) => {
       ] });
     } else {
       return res.json({ results: [
-        { text: "מצטערים לשמוע! מקווים שלהבא נשתפר" },
-        { text: "לחץ כאן כדי להתחיל שיחה חדשה", button: true }
+        { text: "אני מצטער לשמוע 😔 תרצה להתחיל שיחה חדשה?", button: true }
       ] });
     }
   }
 
   const interestMatch = message.match(/אני מעוניין בדירה\s*(\d+)/);
   if (interestMatch) {
-    userState[userId] = { awaitingAptNumber: true };
+    userState[userId] = { awaitingBudget: true };
     return res.json({
       results: [
         { text: `בשמחה! נרשום אותך עבור דירה ${interestMatch[1]}. נתחיל בלבקש כמה פרטים...` },
@@ -193,11 +171,12 @@ app.post('/chat', async (req, res) => {
   const params = detectParams(message);
 
   if (params.casual) {
-    return res.json({ results: [{ text: "היי! אני כאן כדי לעזור לך עם חיפוש דירות 😊" }] });
+    return res.json({ results: [{ text: "אני כאן כדי לעזור בחיפוש דירות 🏠.
+תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?" }] });
   }
 
   if (params.unrelated) {
-    return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות. שאל אותי על דירות! 🏠" }] });
+    return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות 🏠. תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?" }] });
   }
 
   if (params.city || params.zone || params.maxPrice || params.rooms || params.floor) {
@@ -206,6 +185,7 @@ app.post('/chat', async (req, res) => {
     if (params.city) filters.push(`city=ilike.${encodeURIComponent('%' + params.city + '%')}`);
     if (params.zone) filters.push(`zone=ilike.${encodeURIComponent('%' + params.zone + '%')}`);
     if (params.maxPrice) filters.push(`price=lte.${encodeURIComponent(params.maxPrice)}`);
+  if (params.minPrice) filters.push(`price=gte.${encodeURIComponent(params.minPrice)}`);
     if (params.rooms) filters.push(`rooms=eq.${encodeURIComponent(params.rooms)}`);
     if (params.floor) filters.push(`floor=eq.${encodeURIComponent(params.floor)}`);
     if (filters.length > 0) url += `&${filters.join('&')}`;
@@ -235,8 +215,9 @@ app.post('/chat', async (req, res) => {
       };
     });
 
-    formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
-    userState[userId] = { awaitingInterest: true };
+    formattedResults.push({
+      text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"'
+    });
 
     return res.json({ results: formattedResults });
   }

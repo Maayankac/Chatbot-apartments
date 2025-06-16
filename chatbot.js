@@ -191,9 +191,21 @@ app.post('/chat', async (req, res) => {
     return res.json({ results: [{ text: "אני כאן כדי לעזור בחיפוש דירות 🏠. תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?" }] });
   }
 
-  if (params.unrelated) {
-    return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות 🏠. תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?" }] });
+if (params.unrelated) {
+  const hasStarted = Object.keys(userState[userId] || {}).length > 0;
+  if (!hasStarted) {
+    return res.json({
+      results: [{
+        text: "אני כאן רק כדי לעזור בחיפוש דירות 🏠. תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?"
+      }]
+    });
+  } else {
+    return res.json({
+      results: [{ text: "אני כרגע מתמקד בחיפוש דירות בלבד. נסה לשאול אותי משהו שקשור לדירה 😊" }]
+    });
   }
+}
+
 
   if (params.city || params.zone || params.maxPrice || params.minPrice || params.rooms || params.floor) {
     let url = `${supabaseUrl}/rest/v1/apartments1?select=*`;

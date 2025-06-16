@@ -17,33 +17,21 @@ async function sendMessage() {
     if (data.results && data.results.length > 0) {
       data.results.forEach(a => {
         if (a.text) {
-          // אם התשובה כוללת בקשה לתחילת שיחה חדשה
+          // 💬 אם זו תגובה עם כפתור התחלת שיחה חדשה
           if (a.button) {
             chatLog.innerHTML += `
               <div class='bot'>
                 ${a.text}<br>
-                <button onclick="startNewChat()">התחל שיחה חדשה</button>
+                <button class="restart-btn" onclick="startNewChat()">התחל שיחה חדשה</button>
               </div>
             `;
             return;
           }
 
-          // בדיקה אם זו תגובת דירה עם מספר דירה
-          const match = a.text.match(/דירה\s*(\d+)/);
-          if (match && a.text.includes("אם אהבת")) {
-            const aptNum = match[1];
-            chatLog.innerHTML += `
-              <div class='bot'>
-                ${a.text}<br>
-                <button onclick="sendInterest(${aptNum})">אני מעוניין</button>
-              </div>
-            `;
-          } else {
-            // תגובה רגילה
-            chatLog.innerHTML += `<div class='bot'>${a.text}</div>`;
-          }
+          // ✅ תגובה רגילה (כולל "אם אהבת את הדירות..." שמגיעה רק פעם אחת)
+          chatLog.innerHTML += `<div class='bot'>${a.text}</div>`;
         } else if (a.zone && a.address) {
-          // תצוגת כרטיס דירה לפי מבנה JSON
+          // 🏠 תצוגת דירה
           chatLog.innerHTML += `
             <div class='bot'>
               <div class='property-card'>
@@ -70,14 +58,14 @@ async function sendMessage() {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-// שליחה אוטומטית של הודעת עניין בדירה
+// ❌ פונקציית שליחת "אני מעוניין" – כבר לא בשימוש, אבל נשאיר אם תרצה להפעיל בעתיד
 function sendInterest(num) {
   const message = `אני מעוניין בדירה ${num}`;
   document.getElementById('userInput').value = message;
   sendMessage();
 }
 
-// התחלת שיחה חדשה - איפוס הצ'אט
+// 🔁 התחלת שיחה חדשה
 function startNewChat() {
   const chatLog = document.getElementById('chatLog');
   chatLog.innerHTML = '';

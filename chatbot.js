@@ -53,11 +53,16 @@ function detectParams(message) {
   }
 
   const priceAboveMatch = lower.match(/(?:מעל|יותר מ)\s*(\d{3,7})/);
-  if (priceAboveMatch) params.minPrice = priceAboveMatch[1];
-  const priceBelowMatch = lower.match(/(?:עד|מתחת ל)\s*(\d{3,7})/);
-  if (priceBelowMatch) params.maxPrice = priceBelowMatch[1];
-  const priceMatch = lower.match(/(\d{3,7})/);
-  if (priceMatch) params.maxPrice = priceMatch[1];
+if (priceAboveMatch) params.minPrice = priceAboveMatch[1];
+
+const priceBelowMatch = lower.match(/(?:עד|מתחת ל)\s*(\d{3,7})/);
+if (priceBelowMatch) params.maxPrice = priceBelowMatch[1];
+
+// רק אם לא זיהית עדיין טווח, תשתמש במחיר כללי
+const priceMatch = lower.match(/(\d{3,7})/);
+if (priceMatch && !params.minPrice && !params.maxPrice) {
+  params.maxPrice = priceMatch[1];
+}
 
   const roomsMatch = lower.match(/(\d+)\s*חדר/);
   if (roomsMatch) params.rooms = roomsMatch[1];

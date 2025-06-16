@@ -165,11 +165,14 @@ if (state.awaitingInterest) {
       };
     });
 
-    formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
-    userState[userId] = { awaitingInterest: true };
-
-    return res.json({ results: formattedResults });
-  }
+ if (data.length > 0) {
+  formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
+  userState[userId] = { awaitingInterest: true };
+  return res.json({ results: formattedResults });
+} else {
+  return res.json({
+    results: [{ text: "לא נמצאו דירות התואמות את החיפוש שלך 😕 נסה לשנות פרמטרים כמו עיר, מחיר או מספר חדרים." }]
+  });
 }
 
   if (state.awaitingBudget) {

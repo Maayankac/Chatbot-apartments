@@ -53,8 +53,6 @@ function detectParams(message) {
     }
   }
 
-  const priceAboveMatch = lower.match(/מעל\s*(\d{3,7})/);
-  if (priceAboveMatch) params.minPrice = priceAboveMatch[1];
   const priceAboveMatch = lower.match(/(?:מעל|יותר מ)\s*(\d{3,7})/);
   if (priceAboveMatch) params.minPrice = priceAboveMatch[1];
   const priceBelowMatch = lower.match(/(?:עד|מתחת ל)\s*(\d{3,7})/);

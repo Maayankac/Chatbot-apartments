@@ -1,3 +1,4 @@
+
 import express from 'express';
 import fetch from 'node-fetch';
 import cors from 'cors';
@@ -86,61 +87,31 @@ app.post('/chat', async (req, res) => {
   const userId = req.ip;
   if (!message) return res.status(400).json({ error: 'Missing message' });
 
-  const hebrewChar = /[\u0590-\u05FF]/;
-const containsHebrew = hebrewChar.test(message);
-
-if (!containsHebrew && /[a-zA-Z]/.test(message)) {
-  return res.json({
-    results: [
-      { text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }
-    ]
-  });
-}
-  const state = userState[userId] || {};
-
-  // ✅ טיפול בתשובה ל"האם אהבת את הדירות?"
-  if (state.awaitingInterest) {
-    if (message.trim() === "כן") {
-      userState[userId] = { awaitingAptNumber: true };
-      return res.json({ results: [{ text: "איזה מספר דירה מעניינת אותך? (כתוב רק את המספר)" }] });
-    } else if (message.trim() === "לא") {
-      const search = lastSearches[userId];
-      if (!search) {
-        return res.json({ results: [{ text: "לא מצאתי חיפוש קודם כדי להציע דירות נוספות. תוכל לכתוב לי מה אתה מחפש 😊" }] });
-      }
-
-      search.offset += 10;
-      const urlWithOffset = `${search.url}&offset=${search.offset}`;
-
-      const supabaseRes = await fetch(urlWithOffset, {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      });
-
-      const data = await supabaseRes.json();
-      const formattedResults = data.map((apt, index) => {
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
-        return {
-          text:
-            `🏠 דירה ${search.offset + index + 1}:<br>` +
-            `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
-            `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
-            `🛏 חדרים: ${apt.rooms}<br>` +
-            `🏢 קומה: ${apt.floor}<br>` +
-            `💲 מחיר: ${apt.price} ש"ח`
-        };
-      });
-
-      formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
-      userState[userId] = { awaitingInterest: true };
-
-      return res.json({ results: formattedResults });
-    }
+  const onlyEnglish = /^[\x00-\x7F\s.,!?'"()\-\[\]]+$/.test(message);
+  if (onlyEnglish) {
+    return res.json({
+      results: [
+        { text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }
+      ]
+    });
   }
 
-  if (state.awaitingAptNumber) {
+  const state = userState[userId] || {};
+
+  
+  if (state.awaitingBudget) {
+    state.budget = message.trim();
+    state.awaitingBudget = false;
+    state.awaitingRooms = true;
+    return res.json({ results: [{ text: "כמה חדרים אתה מחפש?" }] });
+  } else if (state.awaitingRooms) {
+    state.rooms = message.trim();
+    const { budget, rooms } = state;
+    return res.json({
+      results: [{ text: `מעולה! רשמנו שחיפשת דירה עם תקציב של ${budget} ש"ח ולפחות ${rooms} חדרים. נתחיל את תהליך הרישום לדירה ✨` }]
+    });
+  } else if (state.awaitingAptNumber) {
+
     state.aptNumber = message.trim();
     state.awaitingAptNumber = false;
     state.awaitingPhone = true;
@@ -161,8 +132,8 @@ if (!containsHebrew && /[a-zA-Z]/.test(message)) {
     userState[userId] = { awaitingFeedback: true };
     return res.json({
       results: [
-        { text: `הפרטים הועברו לבעל הדירה ${aptNumber}. הוא יצור איתך קשר בהקדם 😊` },
-        { text: "האם הצ'אט עזר לך? (כן / לא)" }
+        { text: `הפרטים שלך עבור דירה ${aptNumber} התקבלו בהצלחה! בעל הדירה יקבל את הפרטים שלך (שם: ${firstName} ${lastName}, טלפון: ${phone}) וייצור איתך קשר בהקדם האפשרי. שיהיה המון בהצלחה! 😊` },
+        { text: "נשמח לדעת האם הצ'אט עזר לך בחיפוש דירה?🙏 (כן / לא)" }
       ]
     });
   } else if (state.awaitingFeedback) {
@@ -174,14 +145,14 @@ if (!containsHebrew && /[a-zA-Z]/.test(message)) {
       ] });
     } else {
       return res.json({ results: [
-        { text: "במה נוכל לעזור יותר? נשמח לשפר! 💬" }
+        { text: "אני מצטער לשמוע 😔 תרצה להתחיל שיחה חדשה?", button: true }
       ] });
     }
   }
 
   const interestMatch = message.match(/אני מעוניין בדירה\s*(\d+)/);
   if (interestMatch) {
-    userState[userId] = { awaitingAptNumber: true };
+    userState[userId] = { awaitingBudget: true };
     return res.json({
       results: [
         { text: `בשמחה! נרשום אותך עבור דירה ${interestMatch[1]}. נתחיל בלבקש כמה פרטים...` },
@@ -235,8 +206,9 @@ if (!containsHebrew && /[a-zA-Z]/.test(message)) {
       };
     });
 
-    formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
-    userState[userId] = { awaitingInterest: true };
+    formattedResults.push({
+      text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"'
+    });
 
     return res.json({ results: formattedResults });
   }

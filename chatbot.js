@@ -69,7 +69,7 @@ function detectParams(message) {
     params.casual = true;
   }
 
-  const realEstateKeywords = ["דירה", "דירות", "חדר", "קומה", "מיקום", "מחיר", "נדל\"ן", "חיפוש"];
+  const realEstateKeywords = ["דירה", "דירות", "חדר", "קומה", "מיקום", "מחיר", "נדל"ן", "חיפוש"];
   const isRelated = realEstateKeywords.some(word => lower.includes(word));
   if (!isRelated && !params.casual) {
     params.unrelated = true;
@@ -78,8 +78,8 @@ function detectParams(message) {
   return params;
 }
 
-const lastSearches = {}; // זיכרון זמני לפי IP
-const userState = {}; // שמירת מצב שיחה
+const lastSearches = {};
+const userState = {};
 
 app.post('/chat', async (req, res) => {
   const { message } = req.body;
@@ -95,28 +95,26 @@ app.post('/chat', async (req, res) => {
     });
   }
 
-  // זרימת שיחה מדורגת
   const state = userState[userId] || {};
+
   if (state.awaitingAptNumber) {
-    userState[userId].aptNumber = message.trim();
-    userState[userId].awaitingAptNumber = false;
-    userState[userId].awaitingPhone = true;
+    state.aptNumber = message.trim();
+    state.awaitingAptNumber = false;
+    state.awaitingPhone = true;
     return res.json({ results: [{ text: "מה מספר הטלפון שלך?" }] });
   } else if (state.awaitingPhone) {
-    userState[userId].phone = message.trim();
-    userState[userId].awaitingPhone = false;
-    userState[userId].awaitingFirstName = true;
+    state.phone = message.trim();
+    state.awaitingPhone = false;
+    state.awaitingFirstName = true;
     return res.json({ results: [{ text: "מה שמך הפרטי?" }] });
   } else if (state.awaitingFirstName) {
-    userState[userId].firstName = message.trim();
-    userState[userId].awaitingFirstName = false;
-    userState[userId].awaitingLastName = true;
+    state.firstName = message.trim();
+    state.awaitingFirstName = false;
+    state.awaitingLastName = true;
     return res.json({ results: [{ text: "מה שם המשפחה שלך?" }] });
   } else if (state.awaitingLastName) {
-    userState[userId].lastName = message.trim();
-    userState[userId].awaitingLastName = false;
-    const { aptNumber, phone, firstName, lastName } = userState[userId];
-    delete userState[userId];
+    state.lastName = message.trim();
+    const { aptNumber, phone, firstName, lastName } = state;
     userState[userId] = { awaitingFeedback: true };
     return res.json({
       results: [
@@ -125,7 +123,7 @@ app.post('/chat', async (req, res) => {
       ]
     });
   } else if (state.awaitingFeedback) {
-    delete userState[userId];
+    userState[userId] = {};
     if (message.trim() === "כן") {
       return res.json({ results: [
         { text: "תודה רבה על הפידבק שלך! 🙏" },
@@ -149,18 +147,6 @@ app.post('/chat', async (req, res) => {
     });
   }
 
-  const aptNumMatch = message.match(/^(\d{1,2})$/);
-  if (aptNumMatch) {
-    userState[userId] = { aptNumber: aptNumMatch[1], awaitingPhone: true };
-    return res.json({ results: [{ text: `מצוין! נא הזן את מספר הטלפון שלך ונעביר אותו לבעל הדירה מספר ${aptNumMatch[1]} 😊` }] });
-  }
-
-  const phoneMatch = message.match(/^05\d([-]?\d){7}$/);
-  if (phoneMatch) {
-    userState[userId] = { phone: phoneMatch[0], awaitingFirstName: true };
-    return res.json({ results: [{ text: "מה שמך הפרטי?" }] });
-  }
-
   const params = detectParams(message);
 
   if (params.casual) {
@@ -169,55 +155,6 @@ app.post('/chat', async (req, res) => {
 
   if (params.unrelated) {
     return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות. שאל אותי על דירות! 🏠" }] });
-  }
-
-  if (message.trim() === "כן") {
-    userState[userId] = { awaitingAptNumber: true };
-    return res.json({ results: [{ text: "איזה מספר דירה מעניינת אותך? (כתוב רק את המספר)" }] });
-  }
-
-  if (message.trim() === "לא") {
-    const search = lastSearches[userId];
-    if (!search) {
-      return res.json({ results: [{ text: "לא מצאתי חיפוש קודם כדי להציע דירות נוספות. תוכל לכתוב לי מה אתה מחפש 😊" }] });
-    }
-
-    search.offset += 10;
-    const urlWithOffset = `${search.url}&offset=${search.offset}`;
-
-    const supabaseRes = await fetch(urlWithOffset, {
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-    });
-
-    const data = await supabaseRes.json();
-    if (!data.length) {
-      return res.json({ results: [{ text: "לא נמצאו עוד דירות. נסה לנסח בקשה חדשה עם קריטריונים שונים 😊" }] });
-    }
-
-const formattedResults = data.map((apt, index) => {
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
-
-  return {
-    text:
-      `🏠 דירה ${index + 1}:<br>` +
-      `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
-      `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
-      `🛏 חדרים: ${apt.rooms}<br>` +
-      `🏢 קומה: ${apt.floor}<br>` +
-      `💲 מחיר: ${apt.price} ש"ח`
-  };
-});
-
-// מוסיפים את שאלת "כן / לא" רק פעם אחת אחרי הדירות
-formattedResults.push({
-  text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"'
-});
-
-
-    return res.json({ results: formattedResults });
   }
 
   if (params.city || params.zone || params.maxPrice || params.rooms || params.floor) {
@@ -242,7 +179,6 @@ formattedResults.push({
     });
 
     const data = await supabaseRes.json();
-
     const formattedResults = data.map((apt, index) => {
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
       return {
@@ -252,9 +188,12 @@ formattedResults.push({
           `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
           `🛏 חדרים: ${apt.rooms}<br>` +
           `🏢 קומה: ${apt.floor}<br>` +
-          `💲 מחיר: ${apt.price} ש"ח<br><br>` +
-          `אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"`
+          `💲 מחיר: ${apt.price} ש"ח`
       };
+    });
+
+    formattedResults.push({
+      text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"'
     });
 
     return res.json({ results: formattedResults });

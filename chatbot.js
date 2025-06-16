@@ -141,7 +141,7 @@ if (state.awaitingInterest) {
         results: [{ text: "לא מצאתי חיפוש קודם כדי להציע דירות נוספות. תוכל לכתוב לי מה אתה מחפש 😊" }]
       });
     }
-
+    
     search.offset += 10;
     const urlWithOffset = `${search.url}&offset=${search.offset}`;
     const supabaseRes = await fetch(urlWithOffset, {
@@ -303,7 +303,6 @@ if (state.awaitingInterest) {
   const openaiJson = await openaiRes.json();
   const reply = openaiJson.choices[0].message.content;
   return res.json({ results: [{ text: reply }] });
-});
 
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);

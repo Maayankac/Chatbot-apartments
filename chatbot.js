@@ -111,7 +111,17 @@ app.post('/chat', async (req, res) => {
     });
   }
 
-  if (params.unrelated && !state.awaitingInterest && !state.awaitingAptNumber) {
+  if (
+  params.unrelated &&
+  !state.awaitingInterest &&
+  !state.awaitingAptNumber &&
+  !state.awaitingPhone &&
+  !state.awaitingFirstName &&
+  !state.awaitingLastName &&
+  !state.awaitingRooms &&
+  !state.awaitingBudget &&
+  !state.awaitingFeedback
+) {
     return res.json({
       results: [{ text: "אני כרגע מתמקד בחיפוש דירות בלבד. נסה לשאול אותי משהו שקשור לדירה 😊" }]
     });

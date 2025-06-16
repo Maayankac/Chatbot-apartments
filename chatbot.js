@@ -97,6 +97,48 @@ app.post('/chat', async (req, res) => {
 
   const state = userState[userId] || {};
 
+  // ✅ טיפול בתשובה ל"האם אהבת את הדירות?"
+  if (state.awaitingInterest) {
+    if (message.trim() === "כן") {
+      userState[userId] = { awaitingAptNumber: true };
+      return res.json({ results: [{ text: "איזה מספר דירה מעניינת אותך? (כתוב רק את המספר)" }] });
+    } else if (message.trim() === "לא") {
+      const search = lastSearches[userId];
+      if (!search) {
+        return res.json({ results: [{ text: "לא מצאתי חיפוש קודם כדי להציע דירות נוספות. תוכל לכתוב לי מה אתה מחפש 😊" }] });
+      }
+
+      search.offset += 10;
+      const urlWithOffset = `${search.url}&offset=${search.offset}`;
+
+      const supabaseRes = await fetch(urlWithOffset, {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      });
+
+      const data = await supabaseRes.json();
+      const formattedResults = data.map((apt, index) => {
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
+        return {
+          text:
+            `🏠 דירה ${search.offset + index + 1}:<br>` +
+            `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
+            `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
+            `🛏 חדרים: ${apt.rooms}<br>` +
+            `🏢 קומה: ${apt.floor}<br>` +
+            `💲 מחיר: ${apt.price} ש"ח`
+        };
+      });
+
+      formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
+      userState[userId] = { awaitingInterest: true };
+
+      return res.json({ results: formattedResults });
+    }
+  }
+
   if (state.awaitingAptNumber) {
     state.aptNumber = message.trim();
     state.awaitingAptNumber = false;
@@ -192,9 +234,8 @@ app.post('/chat', async (req, res) => {
       };
     });
 
-    formattedResults.push({
-      text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"'
-    });
+    formattedResults.push({ text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"' });
+    userState[userId] = { awaitingInterest: true };
 
     return res.json({ results: formattedResults });
   }

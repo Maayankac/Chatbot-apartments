@@ -86,15 +86,16 @@ app.post('/chat', async (req, res) => {
   const userId = req.ip;
   if (!message) return res.status(400).json({ error: 'Missing message' });
 
-  const onlyEnglish = /^[\x00-\x7F\s.,!?'"()\-\[\]]+$/.test(message);
-  if (onlyEnglish) {
-    return res.json({
-      results: [
-        { text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }
-      ]
-    });
-  }
+  const hebrewChar = /[\u0590-\u05FF]/;
+const containsHebrew = hebrewChar.test(message);
 
+if (!containsHebrew && /[a-zA-Z]/.test(message)) {
+  return res.json({
+    results: [
+      { text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }
+    ]
+  });
+}
   const state = userState[userId] || {};
 
   // ✅ טיפול בתשובה ל"האם אהבת את הדירות?"

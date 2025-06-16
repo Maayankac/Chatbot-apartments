@@ -17,9 +17,20 @@ async function sendMessage() {
     if (data.results && data.results.length > 0) {
       data.results.forEach(a => {
         if (a.text) {
-          // בדיקה אם זו תגובת דירה עם מספר
+          // אם התשובה כוללת בקשה לתחילת שיחה חדשה
+          if (a.button) {
+            chatLog.innerHTML += `
+              <div class='bot'>
+                ${a.text}<br>
+                <button onclick="startNewChat()">התחל שיחה חדשה</button>
+              </div>
+            `;
+            return;
+          }
+
+          // בדיקה אם זו תגובת דירה עם מספר דירה
           const match = a.text.match(/דירה\s*(\d+)/);
-          if (match) {
+          if (match && a.text.includes("אם אהבת")) {
             const aptNum = match[1];
             chatLog.innerHTML += `
               <div class='bot'>
@@ -29,10 +40,10 @@ async function sendMessage() {
             `;
           } else {
             // תגובה רגילה
-chatLog.innerHTML += `<div class='bot'>${a.text}</div>`;
+            chatLog.innerHTML += `<div class='bot'>${a.text}</div>`;
           }
         } else if (a.zone && a.address) {
-          // תצוגת דירה לפי פרטי אובייקט
+          // תצוגת כרטיס דירה לפי מבנה JSON
           chatLog.innerHTML += `
             <div class='bot'>
               <div class='property-card'>
@@ -64,4 +75,12 @@ function sendInterest(num) {
   const message = `אני מעוניין בדירה ${num}`;
   document.getElementById('userInput').value = message;
   sendMessage();
+}
+
+// התחלת שיחה חדשה - איפוס הצ'אט
+function startNewChat() {
+  const chatLog = document.getElementById('chatLog');
+  chatLog.innerHTML = '';
+  document.getElementById('userInput').value = '';
+  document.getElementById('userInput').focus();
 }

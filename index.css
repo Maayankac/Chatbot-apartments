@@ -122,3 +122,26 @@ h1 {
     margin-top: 10px;
     align-self: center;
 }
+/* כפתור התחלת שיחה חדשה */
+.bot button.restart-btn {
+  background-color: #007bff; /* כחול */
+  color: white;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.bot button.restart-btn:hover {
+  background-color: #0056b3;
+}
+
+/* סגנון להודעות סיכום / שאלות */
+.bot.final-question {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}

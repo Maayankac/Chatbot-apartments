@@ -69,7 +69,7 @@ function detectParams(message) {
     params.casual = true;
   }
 
-  const realEstateKeywords = ["דירה", "דירות", "חדר", "קומה", "מיקום", "מחיר", "נדל"ן", "חיפוש"];
+  const realEstateKeywords = ["דירה", "דירות", "חדר", "קומה", "מיקום", "מחיר", "נדלן", "חיפוש"];
   const isRelated = realEstateKeywords.some(word => lower.includes(word));
   if (!isRelated && !params.casual) {
     params.unrelated = true;

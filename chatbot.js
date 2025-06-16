@@ -85,6 +85,7 @@ function detectParams(message) {
 
 const lastSearches = {};
 const userState = {};
+const shownIntroMessage = {}; // ✅ נשמר למעקב אם המשתמש כבר קיבל את ההודעה הראשונית
 
 app.post('/chat', async (req, res) => {
   const { message } = req.body;
@@ -95,48 +96,43 @@ app.post('/chat', async (req, res) => {
   const containsEnglishLetters = /[a-zA-Z]/.test(message);
   if (!containsHebrew && containsEnglishLetters) {
     return res.json({
-      results: [{ text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }]
+      results: [
+        { text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }
+      ]
     });
   }
 
   const state = userState[userId] || {};
   const params = detectParams(message);
-  const isFirstMessage = !userState[userId] || Object.keys(userState[userId]).length === 0;
 
+  const hasActiveFlow = Object.values(state).some(val => val === true);
+
+  // הודעת פתיחה ראשונית
   if (
-    isFirstMessage &&
+    !hasActiveFlow &&
     !params.casual &&
-    !params.unrelated &&
-    !params.city &&
-    !params.zone &&
-    !params.maxPrice &&
-    !params.minPrice &&
-    !params.rooms &&
-    !params.floor
+    params.unrelated &&
+    !shownIntroMessage[userId]
   ) {
+    shownIntroMessage[userId] = true;
     return res.json({
-      results: [{
-        text: "אני כאן רק כדי לעזור בחיפוש דירות 🏠. תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?"
-      }]
+      results: [
+        {
+          text: "אני כאן רק כדי לעזור בחיפוש דירות 🏠. תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?"
+        }
+      ]
     });
   }
 
   if (params.unrelated) {
-    const hasStarted = Object.keys(userState[userId] || {}).length > 0;
-    if (!hasStarted) {
-      return res.json({
-        results: [{
-          text: "אני כאן רק כדי לעזור בחיפוש דירות 🏠. תוכל לרשום לי מה אתה מחפש – כמה חדרים, באיזו עיר, ומעל איזה תקציב?"
-        }]
-      });
-    } else {
-      return res.json({
-        results: [{ text: "אני כרגע מתמקד בחיפוש דירות בלבד. נסה לשאול אותי משהו שקשור לדירה 😊" }]
-      });
-    }
+    return res.json({
+      results: [
+        { text: "אני כרגע מתמקד בחיפוש דירות בלבד. נסה לשאול אותי משהו שקשור לדירה 😊" }
+      ]
+    });
   }
 
-  return res.json({ results: [{ text: "🔧 שאר הזרימה תיכנס כאן – לפי הקוד הקיים שלך" }] });
+  return res.json({ results: [{ text: "✔️ הכל עובד — שאר הלוגיקה כאן..." }] });
 });
 
 app.listen(port, () => {

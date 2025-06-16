@@ -78,105 +78,201 @@ function detectParams(message) {
   return params;
 }
 
+const lastSearches = {}; // זיכרון זמני לפי IP
+const userState = {}; // שמירת מצב שיחה
+
 app.post('/chat', async (req, res) => {
   const { message } = req.body;
+  const userId = req.ip;
   if (!message) return res.status(400).json({ error: 'Missing message' });
 
-  // ✅ בדיקה אם ההודעה באנגלית בלבד
   const onlyEnglish = /^[\x00-\x7F\s.,!?'"()\-\[\]]+$/.test(message);
   if (onlyEnglish) {
     return res.json({
       results: [
-        { text: "הצ'אט כרגע מבין רק עברית. אנא נסח את הבקשה בעברית 😊" }
+        { text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }
       ]
     });
   }
 
-  try {
-    const interestMatch = message.match(/אני מעוניין בדירה\s*(\d+)/);
-    if (interestMatch) {
-      return res.json({
-        results: [
-          {
-            text: `מעולה! אני קובע לך פגישה עם בעל הדירה מספר ${interestMatch[1]} 😊 נדאג לעדכן אותך בפרטים בקרוב.`,
-          },
-        ],
-      });
+  // זרימת שיחה מדורגת
+  const state = userState[userId] || {};
+  if (state.awaitingAptNumber) {
+    userState[userId].aptNumber = message.trim();
+    userState[userId].awaitingAptNumber = false;
+    userState[userId].awaitingPhone = true;
+    return res.json({ results: [{ text: "מה מספר הטלפון שלך?" }] });
+  } else if (state.awaitingPhone) {
+    userState[userId].phone = message.trim();
+    userState[userId].awaitingPhone = false;
+    userState[userId].awaitingFirstName = true;
+    return res.json({ results: [{ text: "מה שמך הפרטי?" }] });
+  } else if (state.awaitingFirstName) {
+    userState[userId].firstName = message.trim();
+    userState[userId].awaitingFirstName = false;
+    userState[userId].awaitingLastName = true;
+    return res.json({ results: [{ text: "מה שם המשפחה שלך?" }] });
+  } else if (state.awaitingLastName) {
+    userState[userId].lastName = message.trim();
+    userState[userId].awaitingLastName = false;
+    const { aptNumber, phone, firstName, lastName } = userState[userId];
+    delete userState[userId];
+    userState[userId] = { awaitingFeedback: true };
+    return res.json({
+      results: [
+        { text: `הפרטים הועברו לבעל הדירה ${aptNumber}. הוא יצור איתך קשר בהקדם 😊` },
+        { text: "האם הצ'אט עזר לך? (כן / לא)" }
+      ]
+    });
+  } else if (state.awaitingFeedback) {
+    delete userState[userId];
+    if (message.trim() === "כן") {
+      return res.json({ results: [
+        { text: "תודה רבה על הפידבק שלך! 🙏" },
+        { text: "לחץ כאן כדי להתחיל שיחה חדשה", button: true }
+      ] });
+    } else {
+      return res.json({ results: [
+        { text: "במה נוכל לעזור יותר? נשמח לשפר! 💬" }
+      ] });
+    }
+  }
+
+  const interestMatch = message.match(/אני מעוניין בדירה\s*(\d+)/);
+  if (interestMatch) {
+    userState[userId] = { awaitingAptNumber: true };
+    return res.json({
+      results: [
+        { text: `בשמחה! נרשום אותך עבור דירה ${interestMatch[1]}. נתחיל בלבקש כמה פרטים...` },
+        { text: "מה מספר הטלפון שלך?" }
+      ]
+    });
+  }
+
+  const aptNumMatch = message.match(/^(\d{1,2})$/);
+  if (aptNumMatch) {
+    userState[userId] = { aptNumber: aptNumMatch[1], awaitingPhone: true };
+    return res.json({ results: [{ text: `מצוין! נא הזן את מספר הטלפון שלך ונעביר אותו לבעל הדירה מספר ${aptNumMatch[1]} 😊` }] });
+  }
+
+  const phoneMatch = message.match(/^05\d([-]?\d){7}$/);
+  if (phoneMatch) {
+    userState[userId] = { phone: phoneMatch[0], awaitingFirstName: true };
+    return res.json({ results: [{ text: "מה שמך הפרטי?" }] });
+  }
+
+  const params = detectParams(message);
+
+  if (params.casual) {
+    return res.json({ results: [{ text: "היי! אני כאן כדי לעזור לך עם חיפוש דירות 😊" }] });
+  }
+
+  if (params.unrelated) {
+    return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות. שאל אותי על דירות! 🏠" }] });
+  }
+
+  if (message.trim() === "כן") {
+    userState[userId] = { awaitingAptNumber: true };
+    return res.json({ results: [{ text: "איזה מספר דירה מעניינת אותך? (כתוב רק את המספר)" }] });
+  }
+
+  if (message.trim() === "לא") {
+    const search = lastSearches[userId];
+    if (!search) {
+      return res.json({ results: [{ text: "לא מצאתי חיפוש קודם כדי להציע דירות נוספות. תוכל לכתוב לי מה אתה מחפש 😊" }] });
     }
 
-    const params = detectParams(message);
+    search.offset += 10;
+    const urlWithOffset = `${search.url}&offset=${search.offset}`;
 
-    if (params.casual) {
-      return res.json({ results: [{ text: "היי! אני כאן כדי לעזור לך עם חיפוש דירות 😊" }] });
-    }
-
-    if (params.unrelated) {
-      return res.json({ results: [{ text: "אני כאן רק כדי לעזור בחיפוש דירות. שאל אותי על דירות! 🏠" }] });
-    }
-
-    if (params.city || params.zone || params.maxPrice || params.rooms || params.floor) {
-      let url = `${supabaseUrl}/rest/v1/apartments1?select=*`;
-      const filters = [];
-      if (params.city) filters.push(`city=ilike.${encodeURIComponent('%' + params.city + '%')}`);
-      if (params.zone) filters.push(`zone=ilike.${encodeURIComponent('%' + params.zone + '%')}`);
-      if (params.maxPrice) filters.push(`price=lte.${encodeURIComponent(params.maxPrice)}`);
-      if (params.rooms) filters.push(`rooms=eq.${encodeURIComponent(params.rooms)}`);
-      if (params.floor) filters.push(`floor=eq.${encodeURIComponent(params.floor)}`);
-      if (filters.length > 0) url += `&${filters.join('&')}`;
-      const limit = params.limit ? params.limit : 10;
-      url += `&limit=${limit}&order=price.asc`;
-
-      const supabaseRes = await fetch(url, {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      });
-
-      const data = await supabaseRes.json();
-
-      const formattedResults = data.map((apt, index) => {
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
-
-        return {
-          text:
-            `🏠 דירה ${index + 1}:<br>` +
-            `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
-            `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
-            `🛏 חדרים: ${apt.rooms}<br>` +
-            `🏢 קומה: ${apt.floor}<br>` +
-            `💲 מחיר: ${apt.price} ש"ח<br><br>` +
-            `אם אתה מעוניין, כתוב: "אני מעוניין בדירה ${index + 1}"`
-        };
-      });
-
-      return res.json({ results: formattedResults });
-    }
-
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
+    const supabaseRes = await fetch(urlWithOffset, {
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
       },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: "You are a friendly chatbot. Respond naturally to the user." },
-          { role: "user", content: message },
-        ],
-        temperature: 0.7,
-      }),
     });
 
-    const openaiJson = await openaiRes.json();
-    const reply = openaiJson.choices[0].message.content;
-    return res.json({ results: [{ text: reply }] });
+    const data = await supabaseRes.json();
+    if (!data.length) {
+      return res.json({ results: [{ text: "לא נמצאו עוד דירות. נסה לנסח בקשה חדשה עם קריטריונים שונים 😊" }] });
+    }
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error processing request', details: err.message });
+    const formattedResults = data.map((apt, index) => {
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
+      return {
+        text:
+          `🏠 דירה ${search.offset + index + 1}:<br>` +
+          `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
+          `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
+          `🛏 חדרים: ${apt.rooms}<br>` +
+          `🏢 קומה: ${apt.floor}<br>` +
+          `💲 מחיר: ${apt.price} ש"ח<br><br>` +
+          `אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"`
+      };
+    });
+
+    return res.json({ results: formattedResults });
   }
+
+  if (params.city || params.zone || params.maxPrice || params.rooms || params.floor) {
+    let url = `${supabaseUrl}/rest/v1/apartments1?select=*`;
+    const filters = [];
+    if (params.city) filters.push(`city=ilike.${encodeURIComponent('%' + params.city + '%')}`);
+    if (params.zone) filters.push(`zone=ilike.${encodeURIComponent('%' + params.zone + '%')}`);
+    if (params.maxPrice) filters.push(`price=lte.${encodeURIComponent(params.maxPrice)}`);
+    if (params.rooms) filters.push(`rooms=eq.${encodeURIComponent(params.rooms)}`);
+    if (params.floor) filters.push(`floor=eq.${encodeURIComponent(params.floor)}`);
+    if (filters.length > 0) url += `&${filters.join('&')}`;
+    const limit = params.limit ? params.limit : 10;
+    url += `&limit=${limit}&order=price.asc`;
+
+    lastSearches[userId] = { url, offset: 0 };
+
+    const supabaseRes = await fetch(`${url}&offset=0`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+    });
+
+    const data = await supabaseRes.json();
+
+    const formattedResults = data.map((apt, index) => {
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
+      return {
+        text:
+          `🏠 דירה ${index + 1}:<br>` +
+          `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
+          `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
+          `🛏 חדרים: ${apt.rooms}<br>` +
+          `🏢 קומה: ${apt.floor}<br>` +
+          `💲 מחיר: ${apt.price} ש"ח<br><br>` +
+          `אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"`
+      };
+    });
+
+    return res.json({ results: formattedResults });
+  }
+
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openaiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a friendly chatbot. Respond naturally to the user." },
+        { role: "user", content: message },
+      ],
+      temperature: 0.7,
+    }),
+  });
+
+  const openaiJson = await openaiRes.json();
+  const reply = openaiJson.choices[0].message.content;
+  return res.json({ results: [{ text: reply }] });
 });
 
 app.listen(port, () => {

@@ -161,7 +161,7 @@ app.post('/chat', async (req, res) => {
     return res.json({
       results: [
         { text: `הפרטים הועברו לבעל הדירה ${aptNumber}.  הוא יצור איתך קשר בהקדם ותוכלו לדבר על הדירה!😊` },
-        { text: "כדי לשפר את חווית המתשמש נשמח לדעת האם הצ'אט עזר לך? (כן / לא)" }
+        { text: "כדי לשפר את חווית המשתמש נשמח לדעת האם הצ'אט עזר לך? (כן / לא)" }
       ]
     });
   } else if (state.awaitingFeedback) {
@@ -173,7 +173,7 @@ app.post('/chat', async (req, res) => {
       ] });
     } else {
       return res.json({ results: [
-        { text: "מצטערים לשמוע! מקווים שלהבא נשתפר" }
+        { text: "מצטערים לשמוע! מקווים שלהבא נשתפר" },
         { text: "לחץ כאן כדי להתחיל שיחה חדשה", button: true }
       ] });
     }

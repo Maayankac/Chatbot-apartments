@@ -197,19 +197,25 @@ app.post('/chat', async (req, res) => {
       return res.json({ results: [{ text: "לא נמצאו עוד דירות. נסה לנסח בקשה חדשה עם קריטריונים שונים 😊" }] });
     }
 
-    const formattedResults = data.map((apt, index) => {
-      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
-      return {
-        text:
-          `🏠 דירה ${search.offset + index + 1}:<br>` +
-          `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
-          `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
-          `🛏 חדרים: ${apt.rooms}<br>` +
-          `🏢 קומה: ${apt.floor}<br>` +
-          `💲 מחיר: ${apt.price} ש"ח<br><br>` +
-          `אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"`
-      };
-    });
+const formattedResults = data.map((apt, index) => {
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address + ', ' + apt.city)}`;
+
+  return {
+    text:
+      `🏠 דירה ${index + 1}:<br>` +
+      `📍 עיר: ${apt.city}, אזור: ${apt.zone}<br>` +
+      `🏠 רחוב: <a href="${mapsUrl}" target="_blank">${apt.address}</a><br>` +
+      `🛏 חדרים: ${apt.rooms}<br>` +
+      `🏢 קומה: ${apt.floor}<br>` +
+      `💲 מחיר: ${apt.price} ש"ח`
+  };
+});
+
+// מוסיפים את שאלת "כן / לא" רק פעם אחת אחרי הדירות
+formattedResults.push({
+  text: 'אם אהבת את הדירות המוצעות, כתוב: "כן" או "לא"'
+});
+
 
     return res.json({ results: formattedResults });
   }

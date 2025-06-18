@@ -66,9 +66,20 @@ function sendInterest(num) {
 }
 
 // 🔁 התחלת שיחה חדשה
-function startNewChat() {
+async function startNewChat() {
   const chatLog = document.getElementById('chatLog');
   chatLog.innerHTML = '';
   document.getElementById('userInput').value = '';
   document.getElementById('userInput').focus();
+
+  try {
+    await fetch('https://chatbot-apartments.onrender.com/reset', {
+      method: 'POST'
+    });
+    chatLog.innerHTML = "<div class='bot'>השיחה אופסה בהצלחה. איך אפשר לעזור? 😊</div>";
+  } catch (error) {
+    console.error('שגיאה באיפוס:', error);
+    chatLog.innerHTML = "<div class='bot'>אירעה שגיאה באיפוס השיחה. נסה שוב.</div>";
+  }
 }
+

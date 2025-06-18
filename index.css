@@ -43,6 +43,22 @@ h1 {
     box-shadow: 0 1px 5px rgba(0,0,0,0.08);
     color: #155724;
 }
+#resetButton {
+  padding: 10px 20px;
+  background-color: #dc3545; /* אדום */
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  margin-top: 10px;
+  transition: background-color 0.3s ease;
+  align-self: flex-start;
+}
+
+#resetButton:hover {
+  background-color: #c82333;
+}
 
 .user {
     background-color: #d1ecf1;

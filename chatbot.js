@@ -103,6 +103,13 @@ app.post('/chat', async (req, res) => {
       results: [{ text: "The chatbot currently understands Hebrew only. Please phrase your request in Hebrew 😊" }]
     });
   }
+app.post('/reset', (req, res) => {
+  const userId = req.ip;
+  delete userState[userId];
+  delete lastSearches[userId];
+  delete shownIntroMessage[userId];
+  res.json({ success: true, message: 'השיחה אופסה בהצלחה ✅' });
+});
 
   const state = userState[userId] || {};
   const params = detectParams(message);
